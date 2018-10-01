@@ -34,26 +34,26 @@ type KnownBug struct {
 }
 
 func (e *KnownBug) Error() string {
-	return "Bug: " + e.BugURL + ". To fix, do: " + e.Fix
+	return "Bug: " + e.BugURL + ". To fix, " + e.Fix
 }
 
-var Err62649_K1_9 = &KnownBug{BugURL: "https://github.com/kubernetes/kubernetes/pull/62649", Fix: "Upgrade to Kubernetes 1.9.8 or later"}
-var Err62649_K1_10 = &KnownBug{BugURL: "https://github.com/kubernetes/kubernetes/pull/62649", Fix: "Upgrade to Kubernetes 1.10.2 or later"}
+var err62649_K1_9 = &KnownBug{BugURL: "https://github.com/kubernetes/kubernetes/pull/62649", Fix: "upgrade to Kubernetes 1.9.8 or later"}
+var err62649_K1_10 = &KnownBug{BugURL: "https://github.com/kubernetes/kubernetes/pull/62649", Fix: "upgrade to Kubernetes 1.10.2 or later"}
 
 var (
 	defaultConstraint                     = ">= 1.9.0"
 	defaultBlackListedVersions            map[string]error
 	defaultBlackListedMultiMasterVersions = map[string]error{
-		"1.9.0":  Err62649_K1_9,
-		"1.9.1":  Err62649_K1_9,
-		"1.9.2":  Err62649_K1_9,
-		"1.9.3":  Err62649_K1_9,
-		"1.9.4":  Err62649_K1_9,
-		"1.9.5":  Err62649_K1_9,
-		"1.9.6":  Err62649_K1_9,
-		"1.9.7":  Err62649_K1_9,
-		"1.10.0": Err62649_K1_10,
-		"1.10.1": Err62649_K1_10,
+		"1.9.0":  err62649_K1_9,
+		"1.9.1":  err62649_K1_9,
+		"1.9.2":  err62649_K1_9,
+		"1.9.3":  err62649_K1_9,
+		"1.9.4":  err62649_K1_9,
+		"1.9.5":  err62649_K1_9,
+		"1.9.6":  err62649_K1_9,
+		"1.9.7":  err62649_K1_9,
+		"1.10.0": err62649_K1_10,
+		"1.10.1": err62649_K1_10,
 	}
 )
 
