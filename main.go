@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"path/filepath"
 
 	"github.com/appscode/go-version"
 	"github.com/appscode/go/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -28,12 +28,32 @@ func main() {
 	utilruntime.Must(IsDefaultSupportedVersion(kc))
 }
 
+type KnownBug struct {
+	BugURL string
+	Fix    string
+}
+
+func (e *KnownBug) Error() string {
+	return "Bug: " + e.BugURL + ". To fix, do: " + e.Fix
+}
+
+var Err62649_K1_9 = &KnownBug{BugURL: "https://github.com/kubernetes/kubernetes/pull/62649", Fix: "Upgrade to Kubernetes 1.9.8 or later"}
+var Err62649_K1_10 = &KnownBug{BugURL: "https://github.com/kubernetes/kubernetes/pull/62649", Fix: "Upgrade to Kubernetes 1.10.2 or later"}
+
 var (
-	defaultConstraint = ">= 1.9.0"
-	defaultBlackListedVersions = []string{"1.11.0", "1.11.1", "1.11.2"}
-	defaultBlackListedMultiMasterVersions = []string{
-		"1.9.0", "1.9.1", "1.9.2", "1.9.3", "1.9.4", "1.9.5", "1.9.6", "1.9.7",
-		"1.10.0", "1.10.1",
+	defaultConstraint                     = ">= 1.9.0"
+	defaultBlackListedVersions            map[string]error
+	defaultBlackListedMultiMasterVersions = map[string]error{
+		"1.9.0":  Err62649_K1_9,
+		"1.9.1":  Err62649_K1_9,
+		"1.9.2":  Err62649_K1_9,
+		"1.9.3":  Err62649_K1_9,
+		"1.9.4":  Err62649_K1_9,
+		"1.9.5":  Err62649_K1_9,
+		"1.9.6":  Err62649_K1_9,
+		"1.9.7":  Err62649_K1_9,
+		"1.10.0": Err62649_K1_10,
+		"1.10.1": Err62649_K1_10,
 	}
 )
 
@@ -45,7 +65,7 @@ func IsDefaultSupportedVersion(kc kubernetes.Interface) error {
 		defaultBlackListedMultiMasterVersions)
 }
 
-func IsSupportedVersion(kc kubernetes.Interface, constraint string, blackListedVersions []string, blackListedMultiMasterVersions []string) error {
+func IsSupportedVersion(kc kubernetes.Interface, constraint string, blackListedVersions map[string]error, blackListedMultiMasterVersions map[string]error) error {
 	info, err := kc.Discovery().ServerVersion()
 	if err != nil {
 		return err
@@ -67,7 +87,7 @@ func IsSupportedVersion(kc kubernetes.Interface, constraint string, blackListedV
 	return checkVersion(v, multiMaster, constraint, blackListedVersions, blackListedMultiMasterVersions)
 }
 
-func checkVersion(v *version.Version, multiMaster bool, constraint string, blackListedVersions []string, blackListedMultiMasterVersions []string) error {
+func checkVersion(v *version.Version, multiMaster bool, constraint string, blackListedVersions map[string]error, blackListedMultiMasterVersions map[string]error) error {
 	vs := v.String()
 
 	if constraint != "" {
@@ -80,23 +100,19 @@ func checkVersion(v *version.Version, multiMaster bool, constraint string, black
 		}
 	}
 
-	if len(blackListedVersions) > 0 {
-		list := sets.NewString(blackListedVersions...)
-		if list.Has(v.Original()) {
-			return fmt.Errorf("kubernetes version %s is blacklisted", v.Original())
-		}
-		if list.Has(vs) {
-			return fmt.Errorf("kubernetes version %s is blacklisted", vs)
-		}
+	if e, ok := blackListedVersions[v.Original()]; ok {
+		return errors.Wrapf(e, "kubernetes version %s is blacklisted", v.Original())
+	}
+	if e, ok := blackListedVersions[vs]; ok {
+		return errors.Wrapf(e, "kubernetes version %s is blacklisted", vs)
 	}
 
-	if len(blackListedMultiMasterVersions) > 0 && multiMaster {
-		list := sets.NewString(blackListedMultiMasterVersions...)
-		if list.Has(v.Original()) {
-			return fmt.Errorf("kubernetes version %s is blacklisted for multi-master cluster", v.Original())
+	if multiMaster {
+		if e, ok := blackListedMultiMasterVersions[v.Original()]; ok {
+			return errors.Wrapf(e, "kubernetes version %s is blacklisted for multi-master cluster", v.Original())
 		}
-		if list.Has(vs) {
-			return fmt.Errorf("kubernetes version %s is blacklisted for multi-master cluster", vs)
+		if e, ok := blackListedMultiMasterVersions[vs]; ok {
+			return errors.Wrapf(e, "kubernetes version %s is blacklisted for multi-master cluster", vs)
 		}
 	}
 	return nil
